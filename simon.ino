@@ -11,6 +11,7 @@ const int red = 4;       // error/wrong
 // led array
 int ledPins[] = { green, yellow, red, LED };
 int ledTotal = 4;        // is there no array.length attr in arduino?..
+
 int gamePins[] = { green, yellow, red };
 int gamePinsTotal = 3;
 
@@ -25,9 +26,10 @@ String state = "idle";   // game state
 
 // game variables
 int gameRound = 1;
-int pattern[] = { green };
-int playerPattern[] = { green };
-
+int pattern[3];
+int patternLength = 0;
+int playerPattern[1];
+int playerPatternLength = 0;
 
 
 
@@ -41,11 +43,17 @@ void setup() {
   
   // initialize redBtn
   pinMode(redBtn, INPUT);
-  // pinMode(yellowBtn, INPUT);
-  // pinMode(greenBtn, INPUT);
+  pinMode(yellowBtn, INPUT);
+  pinMode(greenBtn, INPUT);
+  
+  // make sure things are random
+  randomSeed(analogRead(0));
   
   // serial read
   Serial.begin(9600);
+  Serial.println();
+  Serial.println();
+  Serial.println();
   Serial.println("===================================");
   Serial.println("|              SIMON              |");
   Serial.println("===================================");
@@ -53,6 +61,8 @@ void setup() {
   Serial.println();
   Serial.println();
   Serial.println("yes, hello. this is Simon");
+  Serial.println();
+  Serial.println();
 }
 
 
@@ -64,22 +74,46 @@ void loop() {
 
   // check game state
   // ----------------------------
-  // game
-  if(state == "simon"){
-    // setting a new pattern
-    simon();
-  }
-
   // idle
   if(state == "idle"){
     // read the state of the pushbutton value:
-    buttonState = digitalRead(redBtn);
+    buttonState = digitalRead(greenBtn);
    
     // if btn is pressed -> start game
     if (buttonState == HIGH) {
       alert();
       state = "simon";}
     else { knightRider();} // idle LED state
+  }
+
+  // game
+  if(state == "simon"){
+    // setting a new pattern
+    simon();
+  }
+
+  if(state == "waiting"){
+    turnOn(LED);
+
+    // wait for user input
+    if(pushed(greenBtn)){
+      // Serial.println("green");
+      checkInput(green);
+    } else if(pushed(yellowBtn)){
+      // Serial.println("yellow");
+      checkInput(yellow);
+    } else if(pushed(redBtn)){
+      // Serial.println("red");
+      checkInput(red);
+    }
+  }
+
+  // victory
+  if(state == "victory"){
+    alert();
+    knightRider();
+    delay(500);
+    knightRider();
   }
 }
 
@@ -96,29 +130,125 @@ void simon() {
   // the order in which they are turned on is randomized
   // the player must match the pattern
 
-  Serial.print("Round: ");
-  Serial.println(gameRound);
+  if(gameRound > 3) {
+    Serial.println("you won!!!");
+    state = "victory";
+  } else {
+    // make pattern
+    generatePattern();
+  
+    Serial.print("Round: ");
+    Serial.println(gameRound);
 
-  // set pattern
-  showPattern();
+    // show pattern
+    showPattern();
 
-  // bring us back to Simon
-  state = "simon";
+    // bring us back to Simon
+    state = "waiting";
+  }
+}
+
+void generatePattern() {
+  // each LED gets turned on x game round
+  // ----------------------------
+  // shit gets weird here.
+  // i'd be lying if i said i completely understood what i did here
+  // koffee
+
+  int one = patternLength;  // 0, 3, 6
+  int two = one+1;          // 1, 4, 7
+  int three = one+2;        // 2, 5, 8
+
+  // get first random LED (2, 3, 4)
+  int led = random(2, 5);
+  pattern[one] = led;
+
+  // 2
+  if(led == 2) {
+    pattern[two] = random(3, 5);
+    // 2, 3
+    if(pattern[two] == 3){
+      pattern[three] = 4;   // 2, 3, 4
+    } 
+    // 2, 4
+    else {
+      pattern[three] = 3;   // 2, 4, 3 
+    }
+  // 3
+  } else if(led == 3){
+    // random choice between what happens here
+    int coin = random(1, 3);
+    if(coin == 1){
+      // 3, 4, 2
+      pattern[two] = 4;
+      pattern[three] = 2;    
+    } else {
+      // 3, 2, 4
+      pattern[two] = 2;
+      pattern[three] = 4;
+    }
+  // 4
+  } else if(led == 4){
+    pattern[two] = random(2, 4);
+    // 4, 3
+    if(pattern[two] == 3){
+      pattern[three] = 2;   // 4, 3, 2
+    }
+    // 4, 2
+    else {
+      pattern[three] = 3;   // 4, 2, 3
+    }
+  }
+
+  // increment patternLength
+  patternLength += 3; // 3,6,9
+  // patternLength = gameRound * gamePins; // 3,6,9
 }
 
 void showPattern() {
   // turn on LED
   turnOn(LED);
+  delay(2000);
 
-  // make pattern
-  int length = gameRound * gamePinsTotal;
-  for(int i=0; i<length; i++){
-    Serial.println(i+1);
-  }
+
+  for(int i=0; i<patternLength; i++){
+    Serial.print(pattern[i]);
+    Serial.print(" - ");
+    turnOn(pattern[i]);
+    delay(500);
+    turnOff(pattern[i]);
+    delay(500);
+  }  
+
+  // let it sink in
+  turnOff(LED);
+  delay(2500);
+
+  turnOnAllLEDs();
+  delay(250);
+  turnOffAllLEDs();
 }
 
-void turnOn(int _led) {digitalWrite(_led, HIGH);}
-void turnOff(int _led) {digitalWrite(_led, LOW);}
+
+void checkInput(int led) {
+  Serial.print("pushed LED: ");
+  Serial.println(led);
+}
+
+
+
+
+
+
+
+// convenience functions
+// ===================================
+boolean pushed(int btn) {
+  if (digitalRead(btn) == HIGH) {return true; }
+  else {return false;}
+}
+void turnOn(int led) {digitalWrite(led, HIGH);}
+void turnOff(int led) {digitalWrite(led, LOW);}
 
 
 // light effects
@@ -141,7 +271,7 @@ void knightRider() {
 
 // alert
 void alert() {
-  for(int i=0; i<3; i++){
+  for(int i=0; i<4; i++){
     turnOnAllLEDs();
     delay(500);
     turnOffAllLEDs();
@@ -162,6 +292,3 @@ void turnOffAllLEDs() {
     digitalWrite(ledPins[led], LOW);
   }
 }
-
-
-
