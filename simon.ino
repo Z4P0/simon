@@ -21,8 +21,12 @@ const int yellowBtn = 9;
 const int greenBtn = 10;
 
 // helper vars
-int buttonState = 0;     // pushbutton status
 String state = "idle";   // game state
+int buttonState = 0;     // pushbutton status
+// debouncing code
+int lastButtonState = LOW;   // the previous reading from the input pin
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 100;    // the debounce time; increase if the output flickers
 
 // game variables
 int gameRound = 1;
@@ -97,14 +101,14 @@ void loop() {
 
     // wait for user input
     if(pushed(greenBtn)){
-      // Serial.println("green");
-      checkInput(green);
+      Serial.println("green");
+      // checkInput(green);
     } else if(pushed(yellowBtn)){
-      // Serial.println("yellow");
-      checkInput(yellow);
+      Serial.println("yellow");
+      // checkInput(yellow);
     } else if(pushed(redBtn)){
-      // Serial.println("red");
-      checkInput(red);
+      Serial.println("red");
+      // checkInput(red);
     }
   }
 
@@ -238,6 +242,7 @@ void checkInput(int led) {
   playerPattern[playerPatternLength] = led;
   playerPatternLength++;
 
+
   Serial.println("player:");
   for(int i=0; i<playerPatternLength; i++){
     Serial.print(playerPattern[i]);
@@ -254,8 +259,61 @@ void checkInput(int led) {
 // convenience functions
 // ===================================
 boolean pushed(int btn) {
-  if (digitalRead(btn) == HIGH) {return true; }
-  else {return false;}
+  // Serial.print(btn);
+  // Serial.print(" - ");
+  
+  int reading = digitalRead(btn);
+  // Serial.println(reading);
+
+  if(reading == LOW){
+    return false;
+  } else {
+    // Serial.println("debounce");
+
+    // check to see if you just pressed the button 
+    // (i.e. the input went from LOW to HIGH),  and you've waited 
+    // long enough since the last press to ignore any noise:  
+
+    // If the switch changed, due to noise or pressing:
+    if (reading != lastButtonState) {
+      // reset the debouncing timer
+      lastDebounceTime = millis();
+      Serial.println(lastDebounceTime);
+    } 
+    
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+      // whatever the reading is at, it's been there for longer
+      // than the debounce delay, so take it as the actual current state:
+      Serial.print(reading);
+      Serial.print(" - ");
+      Serial.print(buttonState);
+
+      if (buttonState == HIGH) {
+        Serial.println("push");
+        return true;
+      }
+
+      // if the button state has changed:
+      if (reading != buttonState) {
+        Serial.println("idk");
+
+        buttonState = reading;
+
+        // only toggle the LED if the new button state is HIGH
+        // if (buttonState == HIGH) {
+        //   Serial.println("push");
+        //   return true;
+        // }
+      }
+    }
+    
+
+    // save the reading.  Next time through the loop,
+    // it'll be the lastButtonState:
+    lastButtonState = reading;
+
+    return false;
+  }
 }
 void turnOn(int led) {digitalWrite(led, HIGH);}
 void turnOff(int led) {digitalWrite(led, LOW);}
@@ -302,6 +360,11 @@ void turnOffAllLEDs() {
     digitalWrite(ledPins[led], LOW);
   }
 }
+
+
+
+
+
 
 
 
