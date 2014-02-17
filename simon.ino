@@ -4,25 +4,27 @@
 
  
 // LED Pins
-// -----------
 const int LED = 13;      // main
-const int green = 1;     // good/continue
-const int yellow = 2;    // Simon
-const int red = 3;       // error/wrong
+const int green = 2;     // good/continue
+const int yellow = 3;    // Simon
+const int red = 4;       // error/wrong
 // led array
-int ledPins[] = {green, yellow, red, LED};
+int ledPins[] = { green, yellow, red, LED };
 int ledTotal = 4;        // is there no array.length attr in arduino?..
 
 // set pin numbers:
-const int button = 8;     // the number of the pushbutton pin
+const int button = 8;
 
 // helper vars
-int buttonState = 0;         // variable for reading the pushbutton status
+int buttonState = 0;     // pushbutton status
+String state = "idle";   // game state
+int gameRound = 1;
+
 
 
 
 // setup
-// ====================================
+// ===================================
 void setup() {                
   // initialize the LED pins (loop through LEDs array)
   for(int led = 0; led < ledTotal; led++) {
@@ -42,29 +44,53 @@ void setup() {
 
 
 // loop
-// ====================================
+// ===================================
 void loop() {
-  knightRider();
+  Serial.print("state: ");
+  Serial.print(state);
 
 
+  // check game state
+  // ----------------------------
+  // game
+  if(state == "simon"){
+    // setting a new pattern
+    Serial.println(" | start new game");
+    alert();
+    simon();
+  }
 
-  // read the state of the pushbutton value:
-//  buttonState = digitalRead(buttonPin);
-//
-//  // check if the pushbutton is pressed.
-//  // if it is, the buttonState is HIGH:
-//  if (buttonState == HIGH) {     
-//    // turn LED on:    
-//    digitalWrite(ledPin, HIGH);  
-//  } 
-//  else {
-//    // turn LED off:
-//    digitalWrite(ledPin, LOW); 
-//  }
+  // idle
+  if(state == "idle"){
+    // read the state of the pushbutton value:
+    buttonState = digitalRead(button);
+    Serial.print(" | button: ");
+    Serial.println(buttonState);
+   
+    // if btn is pressed -> start game
+    if (buttonState == HIGH) {
+      state = "simon";}
+    else {
+      knightRider();}
+  }
+
+}
+
+
+// game functions
+// ===================================
+void simon() {
+  Serial.print("Round: ");
+  Serial.println(gameRound);
 }
 
 
 
+
+// light effects
+// ===================================
+
+// idle
 void knightRider() {
   //  knight rider
   for(int led = 0; led < ledTotal; led++) {
@@ -79,20 +105,26 @@ void knightRider() {
   }
 }
 
+// alert
+void alert() {
+  for(int i=0; i<3; i++){
+    turnOnAllLEDs();
+    delay(500);
+    turnOffAllLEDs();
+    delay(250); 
+  }
+}
 
-
-
+// turn on all leds
 void turnOnAllLEDs() {
-  digitalWrite(LED, HIGH);
-  digitalWrite(red, HIGH);
-  digitalWrite(yellow, HIGH);
-  digitalWrite(green, HIGH);
+  for(int led = 0; led < ledTotal; led++) {
+    digitalWrite(ledPins[led], HIGH);
+  }
 }
 
+// turn off all leds
 void turnOffAllLEDs() {
-  digitalWrite(LED, LOW);
-  digitalWrite(red, LOW);
-  digitalWrite(yellow, LOW);
-  digitalWrite(green, LOW);
+  for(int led = 0; led < ledTotal; led++) {
+    digitalWrite(ledPins[led], LOW);
+  }
 }
-
