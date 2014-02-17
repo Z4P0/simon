@@ -222,17 +222,27 @@ void showPattern() {
 
   // let it sink in
   turnOff(LED);
-  delay(2500);
+  delay(1500);
 
   turnOnAllLEDs();
-  delay(250);
+  delay(500);
   turnOffAllLEDs();
 }
 
 
 void checkInput(int led) {
+  Serial.println();
   Serial.print("pushed LED: ");
   Serial.println(led);
+  
+  playerPattern[playerPatternLength] = led;
+  playerPatternLength++;
+
+  Serial.println("player:");
+  for(int i=0; i<playerPatternLength; i++){
+    Serial.print(playerPattern[i]);
+    Serial.print(" - ");
+  }
 }
 
 
@@ -292,3 +302,6 @@ void turnOffAllLEDs() {
     digitalWrite(ledPins[led], LOW);
   }
 }
+
+
+
