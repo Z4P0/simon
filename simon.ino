@@ -165,6 +165,11 @@ void loop() {
     knightRider();
     delay(500);
     knightRider();
+    if (digitalRead(greenBtn) == HIGH) {
+      Serial.println("-- start --");
+      alert();
+      state = "simon";
+    }
   }
 // */
 
@@ -195,6 +200,9 @@ void simon() {
 
     // show pattern
     showPattern();
+
+    // reset the user
+    playerPatternLength = 0;
 
     // bring us back to Simon
     state = "waiting";
@@ -303,8 +311,6 @@ void comparePatterns() {
 
   for(int i=0; i<playerPatternLength; i++){
     if(playerPattern[i] != pattern[i]){
-      Serial.println();
-      Serial.println("WHOA BUDDY");
       error();
     } else {
       Serial.print(playerPattern[i]);
@@ -315,19 +321,16 @@ void comparePatterns() {
 
 void error() {
   Serial.println();
-  Serial.println();
-  Serial.println();
   Serial.println("===================================");
   Serial.println("sorry, but you done goofed.");
   Serial.println("===================================");
   Serial.println();
-  Serial.println();
-  Serial.println();
-  alert();
   alert();
   alert(); // yay copy & paste
 
   state = "idle";
+  gameRound = 1;
+  patternLength = 0;
 }
 
 
