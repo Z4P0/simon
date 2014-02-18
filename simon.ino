@@ -9,26 +9,24 @@ const int green = 2;     // good/continue
 const int yellow = 3;    // Simon
 const int red = 4;       // error/wrong
 // led array
-int ledPins[] = { green, yellow, red, LED };
-int ledTotal = 4;        // is there no array.length attr in arduino?..
+byte ledPins[] = { green, yellow, red, LED };
+const int ledTotal = sizeof(ledPins);
+byte gamePins[] = { green, yellow, red };
+const int gamePinsTotal = sizeof(gamePins);
 
-int gamePins[] = { green, yellow, red };
-int gamePinsTotal = 3;
+
 
 // set pin numbers:
 const int redBtn = 8;
 const int yellowBtn = 9;
 const int greenBtn = 10;
+byte buttons[] = {redBtn, yellowBtn, greenBtn}; 
+const int buttonsTotal = sizeof(buttons);
 
-// helper vars
-String state = "idle";   // game state
-int buttonState = 0;     // pushbutton status
-// debouncing code
-int lastButtonState = LOW;   // the previous reading from the input pin
-long lastDebounceTime = 0;  // the last time the output pin was toggled
-long debounceDelay = 100;    // the debounce time; increase if the output flickers
+
 
 // game variables
+String state = "idle";   // game state
 int gameRound = 1;
 int pattern[3];
 int patternLength = 0;
@@ -37,23 +35,30 @@ int playerPatternLength = 0;
 
 
 
+// debouncing madness
+long debounceDelay = 50;
+// green
+int green_buttonState;
+int green_lastButtonState = LOW;
+long green_lastDebounceTime = 0;
+// yellow
+int yellow_buttonState;
+int yellow_lastButtonState = LOW;
+long yellow_lastDebounceTime = 0;
+// red
+int red_buttonState;
+int red_lastButtonState = LOW;
+long red_lastDebounceTime = 0;
+
+
+
+
+
+
+
 // setup
 // ===================================
-void setup() {
-  // initialize the LED pins (loop through LEDs array)
-  for(int led = 0; led < ledTotal; led++) {
-    pinMode(ledPins[led], OUTPUT);
-  }
-  
-  // initialize redBtn
-  pinMode(redBtn, INPUT);
-  pinMode(yellowBtn, INPUT);
-  pinMode(greenBtn, INPUT);
-  
-  // make sure things are random
-  randomSeed(analogRead(0));
-  
-  // serial read
+void setup() {  
   Serial.begin(9600);
   Serial.println();
   Serial.println();
@@ -67,7 +72,22 @@ void setup() {
   Serial.println("yes, hello. this is Simon");
   Serial.println();
   Serial.println();
+
+  // make sure things are random
+  randomSeed(analogRead(0));
+
+  // initialize the LED pins (loop through LEDs array)
+  for(int led = 0; led < ledTotal; led++) {
+    pinMode(ledPins[led], OUTPUT);
+  }
+  
+  // initialize buttons & enable pull-up resistors on switch pins
+  for (byte i=0; i< buttonsTotal; i++) {
+    pinMode(buttons[i], INPUT);
+  }
 }
+
+
 
 
 
@@ -76,15 +96,14 @@ void setup() {
 // ===================================
 void loop() {
 
+// /*
   // check game state
   // ----------------------------
   // idle
   if(state == "idle"){
-    // read the state of the pushbutton value:
-    buttonState = digitalRead(greenBtn);
-   
     // if btn is pressed -> start game
-    if (buttonState == HIGH) {
+    if (digitalRead(greenBtn) == HIGH) {
+      Serial.println("-- start --");
       alert();
       state = "simon";}
     else { knightRider();} // idle LED state
@@ -99,14 +118,45 @@ void loop() {
   if(state == "waiting"){
     turnOn(LED);
 
-    // wait for user input
-    if(pushed(greenBtn)){
-      checkInput(green);
-    } else if(pushed(yellowBtn)){
-      checkInput(yellow);
-    } else if(pushed(redBtn)){
-      checkInput(red);
+    // debouncing madness
+    // - literally the example code copied 3 times..
+    // all of these call registerInput(color);
+
+    // green
+    // ----------------------------
+    int green_reading = digitalRead(greenBtn);
+    if (green_reading != green_lastButtonState) {green_lastDebounceTime = millis();}    
+    if ((millis() - green_lastDebounceTime) > debounceDelay) {
+      if (green_reading != green_buttonState) {
+        green_buttonState = green_reading;
+        if (green_buttonState == HIGH) {registerInput(green);}
+      }
     }
+    green_lastButtonState = green_reading;
+
+    // yellow
+    // ----------------------------
+    int yellow_reading = digitalRead(yellowBtn);
+    if (yellow_reading != yellow_lastButtonState) {yellow_lastDebounceTime = millis();}    
+    if ((millis() - yellow_lastDebounceTime) > debounceDelay) {
+      if (yellow_reading != yellow_buttonState) {
+        yellow_buttonState = yellow_reading;
+        if (yellow_buttonState == HIGH) {registerInput(yellow);}
+      }
+    }
+    yellow_lastButtonState = yellow_reading;
+
+    // red
+    // ----------------------------
+    int red_reading = digitalRead(redBtn);
+    if (red_reading != red_lastButtonState) {red_lastDebounceTime = millis();}    
+    if ((millis() - red_lastDebounceTime) > debounceDelay) {
+      if (red_reading != red_buttonState) {
+        red_buttonState = red_reading;
+        if (red_buttonState == HIGH) {registerInput(red);}
+      }
+    }
+    red_lastButtonState = red_reading;
   }
 
   // victory
@@ -116,6 +166,8 @@ void loop() {
     delay(500);
     knightRider();
   }
+// */
+
 }
 
 
@@ -229,23 +281,21 @@ void showPattern() {
 }
 
 
-void checkInput(int led) {
-  Serial.println();
-  Serial.print("pushed LED: ");
-  Serial.println(led);
-  
+void registerInput(int led) {
   turnOn(led);
-  delay(250);
+  delay(200);
 
-  // playerPattern[playerPatternLength] = led;
-  // playerPatternLength++;
+  playerPattern[playerPatternLength] = led;
+  playerPatternLength++;
 
 
-  // Serial.println("player:");
-  // for(int i=0; i<playerPatternLength; i++){
-  //   Serial.print(playerPattern[i]);
-  //   Serial.print(" - ");
-  // }
+  Serial.println();
+  Serial.println("player:");
+  for(int i=0; i<playerPatternLength; i++){
+    Serial.print(playerPattern[i]);
+    Serial.print(" - ");
+  }
+  
 
   turnOff(led);
 }
@@ -254,118 +304,12 @@ void checkInput(int led) {
 
 
 
-// debouncing
-// ===================================
-void check_switches()
-{// https://www.adafruit.com/blog/2009/10/20/example-code-for-multi-button-checker-with-debouncing/
-  static byte previousstate[NUMBUTTONS];
-  static byte currentstate[NUMBUTTONS];
-  static long lasttime;
-  byte index;
-
-  if (millis() < lasttime) {
-     // we wrapped around, lets just try again
-     lasttime = millis();
-  }
-  
-  if ((lasttime + DEBOUNCE) > millis()) {
-    // not enough time has passed to debounce
-    return; 
-  }
-  // ok we have waited DEBOUNCE milliseconds, lets reset the timer
-  lasttime = millis();
-  
-  for (index = 0; index < NUMBUTTONS; index++) {
-     
-    currentstate[index] = digitalRead(buttons[index]);   // read the button
-    
-    /*     
-    Serial.print(index, DEC);
-    Serial.print(": cstate=");
-    Serial.print(currentstate[index], DEC);
-    Serial.print(", pstate=");
-    Serial.print(previousstate[index], DEC);
-    Serial.print(", press=");
-    */
-    
-    if (currentstate[index] == previousstate[index]) {
-      if ((pressed[index] == LOW) && (currentstate[index] == LOW)) {
-          // just pressed
-          justpressed[index] = 1;
-      }
-      else if ((pressed[index] == HIGH) && (currentstate[index] == HIGH)) {
-          // just released
-          justreleased[index] = 1;
-      }
-      pressed[index] = !currentstate[index];  // remember, digital HIGH means NOT pressed
-    }
-    //Serial.println(pressed[index], DEC);
-    previousstate[index] = currentstate[index];   // keep a running tally of the buttons
-  }
-}
-
-
 
 
 
 
 // convenience functions
 // ===================================
-boolean pushed(int btn) {
-  int reading = digitalRead(btn);
-
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastButtonState) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  } 
-  
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer
-    // than the debounce delay, so take it as the actual current state:
-    Serial.println();
-    Serial.print(reading);
-    Serial.print(" - ");
-    Serial.print(buttonState);
-
-    // if the button state has changed:
-    if (reading != buttonState) {
-      Serial.println("idk");
-
-      buttonState = reading;
-
-      // only toggle the LED if the new button state is HIGH
-      if (buttonState == HIGH) {
-        Serial.println("push");
-        return true;
-      } else {
-        return false;
-        Serial.println("--");
-      }
-    }
-  }
-
-  // if(reading == LOW){
-  //   return false;
-  // } else {
-  //   // check to see if you just pressed the button 
-  //   // (i.e. the input went from LOW to HIGH),  and you've waited 
-  //   // long enough since the last press to ignore any noise:  
-
-    
-  //     }
-  //   }
-    
-
-  //   // save the reading.  Next time through the loop,
-  //   // it'll be the lastButtonState:
-  //   lastButtonState = reading;
-
-  //   return false;
-  // }
-}
-
-
 void turnOn(int led) {digitalWrite(led, HIGH);}
 void turnOff(int led) {digitalWrite(led, LOW);}
 
@@ -422,8 +366,4 @@ void alert() {
     delay(250); 
   }
 }
-
-
-
-
 
