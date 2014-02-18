@@ -101,14 +101,11 @@ void loop() {
 
     // wait for user input
     if(pushed(greenBtn)){
-      Serial.println("green");
-      // checkInput(green);
+      checkInput(green);
     } else if(pushed(yellowBtn)){
-      Serial.println("yellow");
-      // checkInput(yellow);
+      checkInput(yellow);
     } else if(pushed(redBtn)){
-      Serial.println("red");
-      // checkInput(red);
+      checkInput(red);
     }
   }
 
@@ -210,6 +207,8 @@ void generatePattern() {
 }
 
 void showPattern() {
+  waveLeft();
+  delay(500);  
   // turn on LED
   turnOn(LED);
   delay(2000);
@@ -226,11 +225,7 @@ void showPattern() {
 
   // let it sink in
   turnOff(LED);
-  delay(1500);
-
-  turnOnAllLEDs();
   delay(500);
-  turnOffAllLEDs();
 }
 
 
@@ -239,17 +234,75 @@ void checkInput(int led) {
   Serial.print("pushed LED: ");
   Serial.println(led);
   
-  playerPattern[playerPatternLength] = led;
-  playerPatternLength++;
+  turnOn(led);
+  delay(250);
+
+  // playerPattern[playerPatternLength] = led;
+  // playerPatternLength++;
 
 
-  Serial.println("player:");
-  for(int i=0; i<playerPatternLength; i++){
-    Serial.print(playerPattern[i]);
-    Serial.print(" - ");
-  }
+  // Serial.println("player:");
+  // for(int i=0; i<playerPatternLength; i++){
+  //   Serial.print(playerPattern[i]);
+  //   Serial.print(" - ");
+  // }
+
+  turnOff(led);
 }
 
+
+
+
+
+// debouncing
+// ===================================
+void check_switches()
+{// https://www.adafruit.com/blog/2009/10/20/example-code-for-multi-button-checker-with-debouncing/
+  static byte previousstate[NUMBUTTONS];
+  static byte currentstate[NUMBUTTONS];
+  static long lasttime;
+  byte index;
+
+  if (millis() < lasttime) {
+     // we wrapped around, lets just try again
+     lasttime = millis();
+  }
+  
+  if ((lasttime + DEBOUNCE) > millis()) {
+    // not enough time has passed to debounce
+    return; 
+  }
+  // ok we have waited DEBOUNCE milliseconds, lets reset the timer
+  lasttime = millis();
+  
+  for (index = 0; index < NUMBUTTONS; index++) {
+     
+    currentstate[index] = digitalRead(buttons[index]);   // read the button
+    
+    /*     
+    Serial.print(index, DEC);
+    Serial.print(": cstate=");
+    Serial.print(currentstate[index], DEC);
+    Serial.print(", pstate=");
+    Serial.print(previousstate[index], DEC);
+    Serial.print(", press=");
+    */
+    
+    if (currentstate[index] == previousstate[index]) {
+      if ((pressed[index] == LOW) && (currentstate[index] == LOW)) {
+          // just pressed
+          justpressed[index] = 1;
+      }
+      else if ((pressed[index] == HIGH) && (currentstate[index] == HIGH)) {
+          // just released
+          justreleased[index] = 1;
+      }
+      pressed[index] = !currentstate[index];  // remember, digital HIGH means NOT pressed
+    }
+    //Serial.println(pressed[index], DEC);
+    previousstate[index] = currentstate[index];   // keep a running tally of the buttons
+  }
+}
 
 
 
@@ -259,82 +312,105 @@ void checkInput(int led) {
 // convenience functions
 // ===================================
 boolean pushed(int btn) {
-  // Serial.print(btn);
-  // Serial.print(" - ");
-  
   int reading = digitalRead(btn);
-  // Serial.println(reading);
 
-  if(reading == LOW){
-    return false;
-  } else {
-    // Serial.println("debounce");
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    Serial.println();
+    Serial.print(reading);
+    Serial.print(" - ");
+    Serial.print(buttonState);
 
-    // check to see if you just pressed the button 
-    // (i.e. the input went from LOW to HIGH),  and you've waited 
-    // long enough since the last press to ignore any noise:  
+    // if the button state has changed:
+    if (reading != buttonState) {
+      Serial.println("idk");
 
-    // If the switch changed, due to noise or pressing:
-    if (reading != lastButtonState) {
-      // reset the debouncing timer
-      lastDebounceTime = millis();
-      Serial.println(lastDebounceTime);
-    } 
-    
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-      // whatever the reading is at, it's been there for longer
-      // than the debounce delay, so take it as the actual current state:
-      Serial.print(reading);
-      Serial.print(" - ");
-      Serial.print(buttonState);
+      buttonState = reading;
 
+      // only toggle the LED if the new button state is HIGH
       if (buttonState == HIGH) {
         Serial.println("push");
         return true;
-      }
-
-      // if the button state has changed:
-      if (reading != buttonState) {
-        Serial.println("idk");
-
-        buttonState = reading;
-
-        // only toggle the LED if the new button state is HIGH
-        // if (buttonState == HIGH) {
-        //   Serial.println("push");
-        //   return true;
-        // }
+      } else {
+        return false;
+        Serial.println("--");
       }
     }
+  }
+
+  // if(reading == LOW){
+  //   return false;
+  // } else {
+  //   // check to see if you just pressed the button 
+  //   // (i.e. the input went from LOW to HIGH),  and you've waited 
+  //   // long enough since the last press to ignore any noise:  
+
+    
+  //     }
+  //   }
     
 
-    // save the reading.  Next time through the loop,
-    // it'll be the lastButtonState:
-    lastButtonState = reading;
+  //   // save the reading.  Next time through the loop,
+  //   // it'll be the lastButtonState:
+  //   lastButtonState = reading;
 
-    return false;
-  }
+  //   return false;
+  // }
 }
+
+
 void turnOn(int led) {digitalWrite(led, HIGH);}
 void turnOff(int led) {digitalWrite(led, LOW);}
+
+
+
+
 
 
 // light effects
 // ===================================
 
+void waveLeft() {
+  for(int led = 0; led < ledTotal; led++) {
+    turnOn(ledPins[led]);
+    delay(80);
+    turnOff(ledPins[led]);
+  }
+}
+void waveRight() {
+  for(int led = ledTotal-1; led >= 0; led--) {
+    turnOn(ledPins[led]);
+    delay(80);
+    turnOff(ledPins[led]);
+  }
+}
+
+// turn on all leds
+void turnOnAllLEDs() {
+  for(int led = 0; led < ledTotal; led++) {
+    turnOn(ledPins[led]);
+  }
+}
+
+// turn off all leds
+void turnOffAllLEDs() {
+  for(int led = 0; led < ledTotal; led++) {
+    turnOff(ledPins[led]);
+  }
+}
+
+
 // idle
 void knightRider() {
-  //  knight rider
-  for(int led = 0; led < ledTotal; led++) {
-    digitalWrite(ledPins[led], HIGH);
-    delay(80);
-    digitalWrite(ledPins[led], LOW);
-  }
-  for(int led = ledTotal-1; led >= 0; led--) {
-    digitalWrite(ledPins[led], HIGH);
-    delay(80);
-    digitalWrite(ledPins[led], LOW);
-  }
+  waveLeft();
+  waveRight();
 }
 
 // alert
@@ -346,23 +422,6 @@ void alert() {
     delay(250); 
   }
 }
-
-// turn on all leds
-void turnOnAllLEDs() {
-  for(int led = 0; led < ledTotal; led++) {
-    digitalWrite(ledPins[led], HIGH);
-  }
-}
-
-// turn off all leds
-void turnOffAllLEDs() {
-  for(int led = 0; led < ledTotal; led++) {
-    digitalWrite(ledPins[led], LOW);
-  }
-}
-
-
-
 
 
 
