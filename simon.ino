@@ -268,10 +268,23 @@ void generatePattern() {
 
 void showPattern() {
   waveLeft();
-  delay(500);  
+  delay(1000);
   // turn on LED
   turnOn(LED);
-  delay(2000);
+  Serial.print("blink ");
+  Serial.print(gameRound);
+  Serial.println(" times");
+  for(int j=0; j<gameRound; j++){
+    turnOff(LED);
+    delay(150);
+    turnOn(LED);
+    Serial.print(j+1);
+    Serial.print("-");
+    delay(850);
+
+  }
+  Serial.println();
+  delay(1000);
 
 
   for(int i=0; i<patternLength; i++){
