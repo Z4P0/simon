@@ -28,9 +28,9 @@ const int buttonsTotal = sizeof(buttons);
 // game variables
 String state = "idle";   // game state
 int gameRound = 1;
-int pattern[3];
+int pattern[9];
 int patternLength = 0;
-int playerPattern[1];
+int playerPattern[9];
 int playerPatternLength = 0;
 
 
@@ -284,24 +284,51 @@ void showPattern() {
 void registerInput(int led) {
   turnOn(led);
   delay(200);
-
+  turnOff(led);
+  
   playerPattern[playerPatternLength] = led;
   playerPatternLength++;
 
+  comparePatterns();
 
-  Serial.println();
-  Serial.println("player:");
-  for(int i=0; i<playerPatternLength; i++){
-    Serial.print(playerPattern[i]);
-    Serial.print(" - ");
+  if(playerPatternLength == patternLength){
+    Serial.println("next level");
+    gameRound++;
+    state = "simon";
   }
-  
-
-  turnOff(led);
 }
 
+void comparePatterns() {
+  Serial.println();
 
+  for(int i=0; i<playerPatternLength; i++){
+    if(playerPattern[i] != pattern[i]){
+      Serial.println();
+      Serial.println("WHOA BUDDY");
+      error();
+    } else {
+      Serial.print(playerPattern[i]);
+      Serial.print(" - ");
+    }
+  }
+}
 
+void error() {
+  Serial.println();
+  Serial.println();
+  Serial.println();
+  Serial.println("===================================");
+  Serial.println("sorry, but you done goofed.");
+  Serial.println("===================================");
+  Serial.println();
+  Serial.println();
+  Serial.println();
+  alert();
+  alert();
+  alert(); // yay copy & paste
+
+  state = "idle";
+}
 
 
 
@@ -366,4 +393,3 @@ void alert() {
     delay(250); 
   }
 }
-
